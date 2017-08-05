@@ -1,5 +1,6 @@
 import os
 import yaml
+import re
 
 # NOTE: must call `.decode("unicode-escape")` on unicode string to eval icon
 
@@ -7,24 +8,26 @@ import yaml
 class Core:
     def __init__(self, directory="."):
         self.directory = directory
-        self.dfiles, self.dfolders = self.get_directory_contents()
+        self.contents = self.get_directory_contents()
         self.files = self.read_yaml("files")
         self.file_aliases = self.read_yaml("file_aliases")
         self.folders = self.read_yaml("folders")
         self.folder_aliases = self.read_yaml("folder_aliases")
+        rows, self.columns = os.popen('stty size', 'r').read().split()
 
     def get_directory_contents(self):
-        files = []
-        folders = []
+        contents = []
         for dirpath, dirs, files_ in os.walk(self.directory):
-            files.extend(files_)
-            folders.extend(dirs)
+            for f in files_:
+                contents.append([" " + f, "file"])
+            for d in dirs:
+                contents.append([" " + d + "/", "dir"])
             break
 
-        return files, folders
+        return contents
 
-    def csort(self, contents):
-        return sorted(contents, key=lambda v: (v.upper(), v[0].islower()))
+    def custom_sort(self, contents):
+        return sorted(contents, key=lambda v: (v[0].upper(), v[0][0].islower()))
 
     def read_yaml(self, filename):
         filename = "yaml/" + filename + ".yaml"
@@ -36,28 +39,40 @@ class Core:
                 exit(1)
 
     def add_icons(self):
-        for i, f in enumerate(self.dfiles):
-            ext = f.split(".")[-1]
-            if ext in self.files:
-                self.dfiles[i] = self.files[ext] + " " + f
-            elif ext in self.file_aliases:
-                self.dfiles[i] = self.files[self.file_aliases[ext]] + " " + f
-
-        for i, f in enumerate(self.dfolders):
-
-            if f in self.folders:
-                self.dfolders[i] = self.folders[f] + " " + f + "/"
-            elif f in self.folder_aliases:
-                self.dfolders[i] = self.folders[self.folder_aliases[f]] + " " + f + "/"
-            else:
-                self.dfolders[i] = self.folders["folder"] + " " + f + "/"
+        for i, f in enumerate(self.contents):
+            if f[1] == "file":
+                ext = f[0].split(".")[-1]
+                if ext in self.files:
+                    self.contents[i].append(self.files[ext])
+                elif ext in self.file_aliases:
+                    self.contents[i].append(self.files[self.file_aliases[ext]])
+                else:
+                    self.contents[i].append(self.files["file"])
+            elif f[1] == "dir":
+                if f[0] in self.folders:
+                    self.contents[i].append(self.folders[f[0]])
+                elif f[0] in self.folder_aliases:
+                    self.contents[i].append(self.folders[self.folder_aliases[f[0]]])
+                else:
+                    self.contents[i].append(self.folders["folder"])
 
     def add_colors(self):
-        self.dfiles = ("\x1b[32m" + s + "\x1b[0m" for s in self.dfiles)
-        self.dfolders = ("\x1b[34m" + s + "\x1b[0m" for s in self.dfolders)
+        for f in self.contents:
+            f[0] = f[0] + "\x1b[0m"
+            if f[1] == "file":
+                f[2] = "\x1b[32m" + f[2]
+            elif f[1] == "dir":
+                f[2] = "\x1b[34m" + f[2]
+
+    def package_text(self, opts={}):
+        self.contents = self.custom_sort(self.contents)
+        self.add_icons()
+        self.add_colors()
+        contents = []
+        for f in self.contents:
+            contents.append(f[2] + " " + f[0])
+        return '    '.join(contents)
+
 
 core = Core()
-core.add_icons()
-core.add_colors()
-print('    ' + '    '.join(core.dfiles))
-print('    ' + '    '.join(core.dfolders))
+print(core.package_text())

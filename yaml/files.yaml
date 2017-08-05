@@ -18,7 +18,7 @@ ebook:        "\ue28b"
 env:          "\uf462"
 epub:         "\ue28a"
 erl:          "\ue7b1"
-file:         "\uf15b"
+file:         "\uf016" # Originally \uf15b
 font:         "\uf031"
 gform:        "\uf298"
 git:          "\uf1d3"
