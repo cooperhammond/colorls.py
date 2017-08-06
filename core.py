@@ -13,7 +13,7 @@ class Core:
         self.file_aliases = self.read_yaml("file_aliases")
         self.folders = self.read_yaml("folders")
         self.folder_aliases = self.read_yaml("folder_aliases")
-        rows, self.columns = os.popen('stty size', 'r').read().split()
+        self.width = int(os.popen('stty size', 'r').read().split()[-1])
 
     def get_directory_contents(self):
         contents = []
@@ -59,9 +59,9 @@ class Core:
     def add_colors(self):
         for f in self.contents:
             if f[1] == "file":
-                f[2] = "\x1b[32m" + f[2] + " "
+                f[2] = "\x1b[32m" + f[2] + " "  # 32 = green
             elif f[1] == "dir":
-                f[2] = "\x1b[34m" + f[2] + " "
+                f[2] = "\x1b[34m" + f[2] + " " # 34 = blue
                 f[0] = f[0] + "/"
             f[0] = f[0] + "\x1b[0m"
 
@@ -69,10 +69,47 @@ class Core:
         self.contents = self.custom_sort(self.contents)
         self.add_icons()
         self.add_colors()
-        contents = []
+        self.items = []
         for f in self.contents:
-            contents.append(f[2] + " " + f[0])
-        return '    '.join(contents)
+            self.items.append(f[2] + " " + f[0])
+        return self.col_print(self.items)
+
+    def wrap_text(self):
+        # (\\x1b\[\d+m|\\u.{4}) The golden operator.
+        s = "    "
+        for f in self.contents:
+            print(re.sub('(\\x1b\[\d+m|\\u.{4})', ' ', f))
+            if len(s.split("\n")[-1]) + len(re.sub(r'\\u....', " ", f)) > self.columns:
+                s = s[:-4]
+                s += "\n" + f
+            else:
+                s += f + "    "
+        return s
+
+    def col_print(self, lines, indent=4, pad=4):
+        # From https://gist.github.com/critiqjo/2ca84db26daaeb1715e1
+        n_lines = len(lines)
+        if n_lines == 0:
+            return
+
+        col_width = max(len(line) for i, line in enumerate(lines))
+        n_cols = int((self.width + pad - indent) / (col_width + pad))
+        n_cols = min(n_lines, max(1, n_cols))
+
+        col_len = int(n_lines / n_cols) + (0 if n_lines % n_cols == 0 else 1)
+        if (n_cols - 1) * col_len >= n_lines:
+            n_cols -= 1
+
+        cols = [lines[i * col_len:i * col_len + col_len] for i in range(n_cols)]
+
+        rows = list(zip(*cols))
+        rows_missed = zip(*[col[len(rows):] for col in cols[:-1]])
+        rows.extend(rows_missed)
+
+        contents = []
+        for row in rows:
+            contents.append(''.join(" " * indent + (" " * pad).join(line.ljust(col_width) for line in row)))
+        return contents
 
 
 core = Core()
