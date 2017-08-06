@@ -19,9 +19,9 @@ class Core:
         contents = []
         for dirpath, dirs, files_ in os.walk(self.directory):
             for f in files_:
-                contents.append([" " + f, "file"])
+                contents.append([f, "file"])
             for d in dirs:
-                contents.append([" " + d + "/", "dir"])
+                contents.append([d, "dir"])
             break
 
         return contents
@@ -58,11 +58,12 @@ class Core:
 
     def add_colors(self):
         for f in self.contents:
-            f[0] = f[0] + "\x1b[0m"
             if f[1] == "file":
-                f[2] = "\x1b[32m" + f[2]
+                f[2] = "\x1b[32m" + f[2] + " "
             elif f[1] == "dir":
-                f[2] = "\x1b[34m" + f[2]
+                f[2] = "\x1b[34m" + f[2] + " "
+                f[0] = f[0] + "/"
+            f[0] = f[0] + "\x1b[0m"
 
     def package_text(self, opts={}):
         self.contents = self.custom_sort(self.contents)
