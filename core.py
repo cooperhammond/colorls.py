@@ -86,13 +86,21 @@ class Core:
                 s += f + "    "
         return s
 
-    def col_print(self, lines, indent=4, pad=4):
+    def blank(self, s):
+        # print(s + " - " + str(len(s)))
+        s = re.sub("\x1b\[\d+m", "", s)
+        s = re.sub("\\\u.{4}", "_", s.encode("unicode-escape"))
+        # print(s + " - " + str(len(s)))
+        return s
+
+    def col_print(self, lines_, indent=4, pad=3):
         # From https://gist.github.com/critiqjo/2ca84db26daaeb1715e1
+        lines = list(self.blank(line) for line in lines_)
         n_lines = len(lines)
         if n_lines == 0:
-            return
+            return []
 
-        col_width = max(len(line) for i, line in enumerate(lines))
+        col_width = max(len(self.blank(line)) for i, line in enumerate(lines))
         n_cols = int((self.width + pad - indent) / (col_width + pad))
         n_cols = min(n_lines, max(1, n_cols))
 
@@ -109,8 +117,16 @@ class Core:
         contents = []
         for row in rows:
             contents.append(''.join(" " * indent + (" " * pad).join(line.ljust(col_width) for line in row)))
+
+        for i, line in enumerate(contents):
+            for l in lines_:
+                line = line.replace(self.blank(l), l)
+                contents[i] = line
+
         return contents
 
 
+
 core = Core()
-print(core.package_text())
+for l in core.package_text():
+    print(l)
