@@ -6,7 +6,8 @@ import re
 
 
 class Core:
-    def __init__(self, directory="."):
+    def __init__(self, args, directory="."):
+        self.args = args
         self.directory = directory
         self.contents = self.get_directory_contents()
         self.files = self.read_yaml("files")
@@ -19,8 +20,12 @@ class Core:
         contents = []
         for dirpath, dirs, files_ in os.walk(self.directory):
             for f in files_:
+                if self.args.all is False and f.startswith("."):
+                    continue
                 contents.append([f, "file"])
             for d in dirs:
+                if self.args.all is False and d.startswith("."):
+                    continue
                 contents.append([d, "dir"])
             break
 
@@ -30,7 +35,7 @@ class Core:
         return sorted(contents, key=lambda v: (v[0].upper(), v[0][0].islower()))
 
     def read_yaml(self, filename):
-        filename = "yaml/" + filename + ".yaml"
+        filename = os.path.dirname(os.path.realpath(__file__)) + "/" + "yaml/" + filename + ".yaml"
         with open(filename, "r") as stream:
             try:
                 return(yaml.load(stream))
@@ -74,22 +79,10 @@ class Core:
             self.items.append(f[2] + " " + f[0])
         return self.col_print(self.items)
 
-    def wrap_text(self):
-        # (\\x1b\[\d+m|\\u.{4}) The golden operator.
-        s = "    "
-        for f in self.contents:
-            print(re.sub('(\\x1b\[\d+m|\\u.{4})', ' ', f))
-            if len(s.split("\n")[-1]) + len(re.sub(r'\\u....', " ", f)) > self.columns:
-                s = s[:-4]
-                s += "\n" + f
-            else:
-                s += f + "    "
-        return s
-
     def blank(self, s):
         # print(s + " - " + str(len(s)))
-        s = re.sub("\x1b\[\d+m", "", s)
-        s = re.sub("\\\u.{4}", "_", s.encode("unicode-escape"))
+        s = re.sub(r"\x1b\[\d+m", "", s)
+        s = re.sub(r"\\\u.{4}", "_", s.encode("unicode-escape"))
         # print(s + " - " + str(len(s)))
         return s
 
@@ -124,9 +117,3 @@ class Core:
                 contents[i] = line
 
         return contents
-
-
-
-core = Core()
-for l in core.package_text():
-    print(l)
